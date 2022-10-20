@@ -5,6 +5,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from shapely import wkt
 import geopandas as gpd
+from collections import deque
 class Heap:
  
     def __init__(self):
@@ -70,7 +71,6 @@ class Heap:
 def printArr(dist, n):
     print ("Vertex\tDistance from source")
     for i in range(n):
-        if(dist[i]<200):
             print ("%d\t\t%d" % (i,dist[i]))
 
  
@@ -90,11 +90,13 @@ class Graph:
  
 
     def dijkstra(self, src,dest,Origen,Origen2,Origen3,Origen4,Origen5):
- 
+        prev=None
+        desiredPath=[Origen[Origen2.index(src)]]
         V = self.V
         dist = [] 
         minHeap = Heap()
-
+        notdone=False
+        started=False
         for v in range(V):
             dist.append(1e7)
             minHeap.array.append( minHeap.newMinHeapNode(v, dist[v]))
@@ -105,7 +107,8 @@ class Graph:
         minHeap.decreaseKey(src, dist[src])
 
         minHeap.size = V
- 
+        distance=[[]]*V
+        distance[src]=[Origen[Origen2.index(src)]]
         while minHeap.isEmpty() == False:
 
             newHeapNode = minHeap.extractMin()
@@ -118,19 +121,24 @@ class Graph:
                 if (minHeap.isInMinHeap(v) and dist[u] != 1e7 and \
                    pCrawl[1] + dist[u] < dist[v]):
                         dist[v] = pCrawl[1] + dist[u]
+                        distance[v]=[]
+                        for i in distance[u]:
+                            distance[v].append(i)
+                        distance[v].append(Origen[Origen2.index(v)])
                         minHeap.decreaseKey(v, dist[v])
+        print(Origen[Origen2.index(dest)])
         printArr(dist,V)
+        print(distance[dest])
+        graficar(distance[dest])
         #a=encontrarPuntoMasCorto(Origen,Origen2,Origen3,dest,Origen4,src,dist[dest],Origen5,None,["nada"])
         #if(a!=False):
         #    for i in range(0,len(a)):
         #        print(a[i]+"->")
         #else:
         #    print("Fallo")
-def graficar(src,target):
-    pass
+def graficar(target):
 
     edges = pd.read_csv('calles_de_medellin_con_acoso.csv',sep=';')
-    a=edges['name'].iloc[[68736]]
     edges['geometry'] = edges['geometry'].apply(wkt.loads)
     edges = gpd.GeoDataFrame(edges)
 
@@ -143,45 +151,48 @@ def graficar(src,target):
 
     area.plot(ax=ax, facecolor='black')
 
-    edges.plot(ax=ax, linewidth=0.1,edgecolor='dimgray')
-    
+    edges.plot(ax=ax, linewidth=0.1)
+    prev1=None
+    prev2=None
+    for i in target:
+        print(i[1:i.index(",")])
+        print(i[i.index(",")+2:len(i)-1])
+        if(prev1==None):
+            prev1=float(i[1:i.index(",")])
+            prev2=float(i[i.index(",")+2:len(i)-1])
+            continue
+        plt.plot([float(prev1),float(i[1:i.index(",")])],[float(prev2),float(i[i.index(",")+2:len(i)-1])],linewidth=0.5)
+        prev1=float(i[1:i.index(",")])
+        prev2=float(i[i.index(",")+2:len(i)-1])
     plt.tight_layout()
+    
     plt.savefig("mapa-de-called-con-longitud.png")
 #Separate code dont mind this ////////////////////////////////////////////////////////////////////////
-def encontrarPuntoMasCorto(listaPunto,Origen,destino,destino2,both,src,maxlength,lengths,previous,arreglo,counter=0):
-    a=False
-    b=False
-    for i in range(0,len(destino)):
-        if(int(counter)>int(maxlength)):
-            return False
-        if(int(src)==int(destino2)):
-            return arreglo
-        if((int(Origen[i])==int(src) and previous!=int(destino[i]))):
-            if(arreglo!=None):
-                if destino[i] not in arreglo:
-                    a=encontrarPuntoMasCorto(listaPunto,Origen,destino,destino2,both,destino[i],maxlength,lengths,Origen[i],arreglo.append(listaPunto[i]),int(counter)+int(lengths[i]))
-                print(arreglo)
-            else:
-                #arreglo=[].append(listaPunto[i])
-                a=encontrarPuntoMasCorto(listaPunto,Origen,destino,destino2,both,destino[i],maxlength,lengths,Origen[i],[].append(listaPunto[i]),int(counter)+int(lengths[i]))
-        if((a!=False)and(a!=None)):
-            return a
-        if((int(destino[i])==int(src) and bool(both[i])==True and previous!=int(Origen[i]))):
-            if(arreglo!=None):
-                if Origen[i] not in arreglo:
-                    b=encontrarPuntoMasCorto(listaPunto,Origen,destino,int(destino2),both,int(Origen[i]),maxlength,lengths,destino[i],arreglo.append(listaPunto[i]),lengths[i]+counter)
 
-            else:
-
-                #arreglo=[].append(listaPunto[i])
-                
-                b=encontrarPuntoMasCorto(listaPunto,Origen,destino,destino2,both,Origen[i],maxlength,lengths,destino[i],[].append(listaPunto[i]),lengths[i]+counter)
-            if(arreglo!=None):
-                print(arreglo)
-        if((b!=False)and(b!=None)):
-            return b
-    return a or b
 #more code separation ///////////////////////////////////////////////////////////////////////////////////
+def bfs(Origen,Destino,both,src,destino):
+    pile=deque()
+    pile.append(src)
+    visits=[]
+    while len(pile)>0:
+        here=pile.pop()
+        if here not in visits:
+            visits.append(here)
+            f=Origen.index(here)
+            c=0
+            if(here==destino):
+                break
+            while(Origen[f]==Origen[f+c]):
+                if(f+c>len(Destino)):
+                    break
+                pile.append(Destino[f+c])
+                if(f+c==len(Origen)):
+                    break
+                c+=1
+            for i in range(0,len(Destino)):
+                if((Destino[i]==here)and(both[i]==True)):
+                    pile.append(Origen[i])
+    return visits
 df = pd.read_csv('calles_de_medellin_con_acoso.csv',sep=';')
 df.drop("Unnamed: 0",axis =1,inplace=True )
 s=27662
@@ -214,16 +225,8 @@ for i in df.iterrows():
         c+=1
     d+=1
     adentro=False
-print(origenes[0])
-print(origenes[1])
-didntbreak=False
 for i in range(0,len(origenes2)):
-    for j in range(0,len(origenes)):
-        if(origenes2[i]==origenes[j]):
-            origenes2[i]=origenes3[j]
-            didntbreak=True
-            break
-    if(didntbreak==False):
+    if origenes2[i] not in origenes:
         s+=1
         print(origenes2[i])
         origenes.append(origenes2[i])
@@ -231,10 +234,12 @@ for i in range(0,len(origenes2)):
         origenes3.append(doll)
         origenes2[i]=origenes3[len(origenes3)-1]
         print(origenes2[i])
-    didntbreak=False
+    else:
+        position=origenes.index(origenes2[i])
+        origenes2[i]=origenes3[position]
 head=Graph(s)
 #27671 
 for i in range(0,len(origenes2)):
-    head.addEdge(int(origenes3[i]),int(origenes2[i]),int(origenes5[i]),bool(origenes4[i]))
-head.dijkstra(0,6,origenes,origenes3,origenes2,origenes4,origenes5)
+    head.addEdge(origenes3[i],origenes2[i],float(origenes5[i]),bool(origenes4[i]))
+head.dijkstra(0,31000,origenes,origenes3,origenes2,origenes4,origenes5)
 

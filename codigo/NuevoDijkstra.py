@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from shapely import wkt
 import geopandas as gpd
 from collections import deque
+import requests
+import folium
 class Heap:
  
     def __init__(self):
@@ -108,7 +110,7 @@ class Graph:
 
         minHeap.size = V
         distance=[[]]*V
-        distance[src]=[Origen[Origen2.index(src)]]
+        #distance[src].append(Origen[Origen2.index(src)])
         while minHeap.isEmpty() == False:
 
             newHeapNode = minHeap.extractMin()
@@ -117,25 +119,20 @@ class Graph:
             for pCrawl in self.graph[u]:
  
                 v = pCrawl[0]
- 
                 if (minHeap.isInMinHeap(v) and dist[u] != 1e7 and \
                    pCrawl[1] + dist[u] < dist[v]):
                         dist[v] = pCrawl[1] + dist[u]
-                        distance[v]=[]
+                        if(len(distance[v])!=0):
+                            distance[v]=[]
                         for i in distance[u]:
                             distance[v].append(i)
                         distance[v].append(Origen[Origen2.index(v)])
+
                         minHeap.decreaseKey(v, dist[v])
         print(Origen[Origen2.index(dest)])
         printArr(dist,V)
         print(distance[dest])
         graficar(distance[dest])
-        #a=encontrarPuntoMasCorto(Origen,Origen2,Origen3,dest,Origen4,src,dist[dest],Origen5,None,["nada"])
-        #if(a!=False):
-        #    for i in range(0,len(a)):
-        #        print(a[i]+"->")
-        #else:
-        #    print("Fallo")
 def graficar(target):
 
     edges = pd.read_csv('calles_de_medellin_con_acoso.csv',sep=';')
@@ -146,7 +143,6 @@ def graficar(target):
     area = pd.read_csv('poligono_de_medellin.csv',sep=';')
     area['geometry'] = area['geometry'].apply(wkt.loads)
     area = gpd.GeoDataFrame(area)
-
     fig, ax = plt.subplots(figsize=(12,8))
 
     area.plot(ax=ax, facecolor='black')
@@ -154,6 +150,11 @@ def graficar(target):
     edges.plot(ax=ax, linewidth=0.1)
     prev1=None
     prev2=None
+    #for point in [points[0], points[-1]]:
+    #    folium.Marker(point).add_to(fig)
+    #folium.PolyLine(points, weight=5, opacity=1).add_to(fig)
+    arrlong=[]
+    arrlat=[]
     for i in target:
         print(i[1:i.index(",")])
         print(i[i.index(",")+2:len(i)-1])
@@ -161,14 +162,31 @@ def graficar(target):
             prev1=float(i[1:i.index(",")])
             prev2=float(i[i.index(",")+2:len(i)-1])
             continue
-        plt.plot([float(prev1),float(i[1:i.index(",")])],[float(prev2),float(i[i.index(",")+2:len(i)-1])],linewidth=0.5)
+        arrlong.append(float(i[1:i.index(",")]))
+        arrlat.append(float(i[i.index(",")+2:len(i)-1]))
         prev1=float(i[1:i.index(",")])
         prev2=float(i[i.index(",")+2:len(i)-1])
+    plt.plot(arrlong,arrlat,linewidth=0.5)
     plt.tight_layout()
     
     plt.savefig("mapa-de-called-con-longitud.png")
-#Separate code dont mind this ////////////////////////////////////////////////////////////////////////
-
+#Separate code dont mind this ///////////////////////////////////////////////////////////////////////
+def create_map(response):
+   # use the response
+   mls = response.json()['features'][0]['geometry']['coordinates']
+   points = [(i[1], i[0]) for i in mls[0]]
+   m = folium.Map()
+   # add marker for the start and ending points
+   for point in [points[0], points[-1]]:
+      folium.Marker(point).add_to(m)
+   # add the lines
+   folium.PolyLine(points, weight=5, opacity=1).add_to(m)
+   # create optimal zoom
+   df = pd.DataFrame(mls[0]).rename(columns={0:'Lon', 1:'Lat'})[['Lat', 'Lon']]
+   sw = df[['Lat', 'Lon']].min().values.tolist()
+   ne = df[['Lat', 'Lon']].max().values.tolist()
+   m.fit_bounds([sw, ne])
+   return m
 #more code separation ///////////////////////////////////////////////////////////////////////////////////
 def bfs(Origen,Destino,both,src,destino):
     pile=deque()
@@ -195,7 +213,8 @@ def bfs(Origen,Destino,both,src,destino):
     return visits
 df = pd.read_csv('calles_de_medellin_con_acoso.csv',sep=';')
 df.drop("Unnamed: 0",axis =1,inplace=True )
-s=27662
+s=0
+#27661
 c=0
 ant=None
 adentro=False
@@ -205,6 +224,7 @@ origenes3=[None]*68749
 origenes4=[None]*68749
 origenes5=[None]*68749
 d=0
+arbol=dict()
 for i in df.iterrows():
     origen=i[1][1]
     nombre= i[1][0]
@@ -214,9 +234,14 @@ for i in df.iterrows():
     oneway=i[1][4]
     origenes2[d]=destino
     origenes[d]=origen
-    origenes3[d]=c
+    origenes3[d]=s
     origenes4[d]=oneway
     origenes5[d]=length
+    if(d==0):
+        print(destino+"aqui")
+    if(arbol.get(str(origenes[d]))==None):
+        arbol[str(origenes[d])]=s
+        s+=1
     if(c!=0):
         if(str(origen)==str(ant)):
             adentro=True
@@ -225,21 +250,33 @@ for i in df.iterrows():
         c+=1
     d+=1
     adentro=False
+origenesSupletorio=[]
 for i in range(0,len(origenes2)):
-    if origenes2[i] not in origenes:
-        s+=1
-        print(origenes2[i])
+    if(arbol.get(str(origenes2[i]))==None):
         origenes.append(origenes2[i])
-        doll=origenes3[len(origenes3)-1]+1
-        origenes3.append(doll)
-        origenes2[i]=origenes3[len(origenes3)-1]
-        print(origenes2[i])
+        arbol[str(origenes2[i])]=s
+        print(str(origenes2[i]))
+        origenesSupletorio.append(s)
+        origenes3.append(int(origenes3[len(origenes3)-1]+1))
+        s+=1
     else:
-        position=origenes.index(origenes2[i])
-        origenes2[i]=origenes3[position]
+        origenesSupletorio.append(arbol[str(origenes2[i])])
+print(s)
+#for i in range(0,len(origenes2)):
+#    if origenes2[i] not in origenes:
+#        s+=1
+#        print(origenes2[i])
+#        origenes.append(origenes2[i])
+#        doll=origenes3[len(origenes3)-1]+1
+#        origenes3.append(doll)
+#        origenes2[i]=origenes3[len(origenes3)-1]
+#        print(origenes2[i])
+#    else:
+#        position=origenes.index(origenes2[i])
+#        origenes2[i]=origenes3[position]
 head=Graph(s)
-#27671 
+#27671
 for i in range(0,len(origenes2)):
-    head.addEdge(origenes3[i],origenes2[i],float(origenes5[i]),bool(origenes4[i]))
-head.dijkstra(0,31000,origenes,origenes3,origenes2,origenes4,origenes5)
+    head.addEdge(int(origenes3[i]),int(arbol.get(str(origenes2[i]))),float(origenes5[i]),bool(origenes4[i]))
 
+head.dijkstra(0,2444,origenes,origenes3,origenesSupletorio,origenes4,origenes5)

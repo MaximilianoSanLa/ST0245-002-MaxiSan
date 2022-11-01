@@ -130,7 +130,7 @@ class Graph:
 
                         minHeap.decreaseKey(v, dist[v])
         print(Origen[Origen2.index(dest)])
-        printArr(dist,V)
+        #printArr(dist,V)
         print(distance[dest])
         graficar(distance[dest])
 def graficar(target):
@@ -278,5 +278,6 @@ head=Graph(s)
 #27671
 for i in range(0,len(origenes2)):
     head.addEdge(int(origenes3[i]),int(arbol.get(str(origenes2[i]))),float(origenes5[i]),bool(origenes4[i]))
-
+print(origenes[origenes3.index(0)])
+print(origenes[origenes3.index(2444)])
 head.dijkstra(0,2444,origenes,origenes3,origenesSupletorio,origenes4,origenes5)

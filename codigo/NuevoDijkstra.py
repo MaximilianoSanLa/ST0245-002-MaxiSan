@@ -100,12 +100,12 @@ class Graph:
         notdone=False
         started=False
         for v in range(V):
-            dist.append(1e7)
+            dist.append(float('inf'))
             minHeap.array.append( minHeap.newMinHeapNode(v, dist[v]))
             minHeap.pos.append(v)
 
         minHeap.pos[src] = src
-        dist[src] = 0
+        dist[src] = 0.0
         minHeap.decreaseKey(src, dist[src])
 
         minHeap.size = V
@@ -119,7 +119,7 @@ class Graph:
             for pCrawl in self.graph[u]:
  
                 v = pCrawl[0]
-                if (minHeap.isInMinHeap(v) and dist[u] != 1e7 and \
+                if (minHeap.isInMinHeap(v) and dist[u] != float('inf') and \
                    pCrawl[1] + dist[u] < dist[v]):
                         dist[v] = pCrawl[1] + dist[u]
                         if(len(distance[v])!=0):
@@ -166,7 +166,8 @@ def graficar(target):
         arrlat.append(float(i[i.index(",")+2:len(i)-1]))
         prev1=float(i[1:i.index(",")])
         prev2=float(i[i.index(",")+2:len(i)-1])
-    plt.plot(arrlong,arrlat,linewidth=0.5)
+    line, = plt.plot(arrlong,arrlat,linewidth=0.5, c='b')
+    line.set_color('yellow')
     plt.tight_layout()
     
     plt.savefig("mapa-de-called-con-longitud.png")
@@ -237,8 +238,6 @@ for i in df.iterrows():
     origenes3[d]=s
     origenes4[d]=oneway
     origenes5[d]=length
-    if(d==0):
-        print(destino+"aqui")
     if(arbol.get(str(origenes[d]))==None):
         arbol[str(origenes[d])]=s
         s+=1
